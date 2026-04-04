@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>rxunn 粒子動畫</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000000; /* 改為純黑背景 */
+            overflow: hidden;
+            font-family: sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #canvas {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* 輸入介面樣式 */
+        #ui-container {
+            position: relative;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            transition: opacity 0.4s ease, transform 0.4s ease;
+        }
+
+        #text-input {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.8);
+            border-radius: 12px;
+            color: #ffffff;
+            font-size: 2rem;
+            padding: 15px 30px;
+            text-align: center;
+            outline: none;
+            width: 80vw;
+            max-width: 400px;
+            /* 將英文粗體字型 (Impact) 放回最前面，保留中文字型與 Emoji 在後方備用 */
+            font-family: "Impact", "Arial Black", "PingFang TC", "Heiti TC", "Microsoft JhengHei", "Noto Sans TC", "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+            font-weight: bold;
+            letter-spacing: 2px;
+            transition: border-color 0.3s, background 0.3s;
+        }
+
+        #text-input:focus {
+            border-color: #ffffff;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        #text-input::placeholder {
+            color: rgba(255, 255, 255, 0.3);
+            font-size: 1.5rem;
+        }
+
+        #start-btn {
+            background: #ffffff;
+            color: #000000;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: transform 0.2s ease, opacity 0.2s ease;
+            box-shadow: 0 4px 15px rgba(255, 255, 255, 0.2);
+        }
+
+        #start-btn:hover {
+            transform: scale(1.05);
+            opacity: 0.9;
+        }
+
+        /* 圖示按鈕共通樣式 */
+        .icon-btn {
+            position: absolute;
+            z-index: 10;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            outline: none;
+            padding: 15px;
+            color: #ffffff;
+            opacity: 0.6;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .icon-btn:hover {
+            opacity: 1;
+            transform: scale(1.1);
+        }
+
+        .icon-btn svg {
+            width: 32px;
+            height: 32px;
+            stroke: currentColor;
+            stroke-width: 2;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        /* 返回按鈕 (左上) */
+        #back-btn {
+            top: 20px;
+            left: 20px;
+        }
+
+        /* 儲存按鈕 (右下) */
+        #save-btn {
+            bottom: 20px;
+            right: 20px;
+        }
+
+        .hidden {
+            display: none !important;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* 錯誤震動動畫 */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-10px); }
+            40%, 80% { transform: translateX(10px); }
+        }
+        .shake {
+            animation: shake 0.4s ease-in-out;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 文字輸入介面 -->
+    <div id="ui-container">
+        <input type="text" id="text-input" placeholder="Typing..." value="" autocomplete="off" />
+        <button id="start-btn">start</button>
+    </div>
+
+    <!-- 左上角：返回按鈕 -->
+    <button id="back-btn" class="icon-btn hidden" title="返回重新輸入">
+        <svg viewBox="0 0 24 24">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+    </button>
+
+    <!-- 右下角：錄影/儲存按鈕 -->
+    <button id="save-btn" class="icon-btn hidden" title="點擊以儲存完整動畫">
+        <svg viewBox="0 0 24 24">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+    </button>
+
+    <!-- 畫布 -->
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d', { alpha: false });
+        
+        // UI 元素
+        const uiContainer = document.getElementById('ui-container');
+        const textInput = document.getElementById('text-input');
+        const startBtn = document.getElementById('start-btn');
+        const backBtn = document.getElementById('back-btn');
+        const saveBtn = document.getElementById('save-btn');
+
+        let w, h;
+        let particles = [];
+        let ambientParticles = [];
+        let isPlaying = false;
+        let animationFrameId;
+        let currentText = "rxunn";
+        
+        // 分鏡與時間軸變數
+        let phase = -1; // 修改：增加 -1 作為前置漂浮階段
+        // -1: 自由漂浮, 0: 推進與生成中, 1: 鏡頭拉遠, 2: 停留與波紋流動, 3: 畫面漸隱, 4: 結束
+        let holdFrames = 0;
+        let preFloatFrames = 0; // 新增：控制漂浮的時間
+        let fadeAlpha = 0;
+        let globalTime = 0; // 用於控制波紋外擴的流動時間
+
+        // 虛擬攝影機
+        let camera = { fx: 0, fy: 0, scale: 1 };
+        let targetCamera = { fx: 0, fy: 0, scale: 1 };
+        
+        // 文字與波紋中心資訊
+        let textBounds = { left: 0, width: 0 };
+        let rippleCenter = { x: 0, y: 0 };
+        let revealX = -1000;
+
+        // 影片錄製變數
+        let mediaRecorder;
+        let recordedChunks = [];
+        let isRecording = false;
+        let videoUrl = null;
+        let videoExt = 'webm';
+        let downloadPending = false;
+
+        // 紀錄前一次的螢幕寬度，用來判斷是否為翻轉螢幕
+        let lastWidth = window.innerWidth;
+
+        // 初始化畫布尺寸 (針對手機端優化)
+        function resize() {
+            const newW = window.innerWidth;
+            const newH = window.innerHeight;
+
+            if (isPlaying && phase < 4) {
+                // 如果正在播放動畫，且「寬度改變了」(例如手機橫放/直放)
+                if (newW !== lastWidth) {
+                    w = canvas.width = newW;
+                    h = canvas.height = newH;
+                    lastWidth = newW;
+                    initParticles(); // 重新計算粒子位置
+                } else {
+                    // 如果只是「高度改變」(例如手機瀏覽器網址列縮放)，不要重置動畫
+                    h = canvas.height = newH;
+                    // canvas 尺寸改變會瞬間清空畫面，但下一幀的 animate() 就會無縫接軌畫回來
+                }
+            } else {
+                // 還沒開始播放時，正常跟隨視窗調整
+                w = canvas.width = newW;
+                h = canvas.height = newH;
+                lastWidth = newW;
+            }
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // 綁定輸入框 Enter 鍵直接開始
+        textInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') startBtn.click();
+        });
+
+        // 綁定開始按鈕
+        startBtn.addEventListener('click', () => {
+            const val = textInput.value.trim();
+            
+            // 如果沒輸入文字，觸發震動動畫並中斷執行
+            if (val === "") {
+                textInput.classList.remove('shake');
+                void textInput.offsetWidth; // 觸發重繪以重啟動畫
+                textInput.classList.add('shake');
+                return;
+            }
+            
+            currentText = val;
+            
+            uiContainer.classList.add('hidden');
+            backBtn.classList.remove('hidden');
+            saveBtn.classList.remove('hidden');
+            
+            if (videoUrl) {
+                URL.revokeObjectURL(videoUrl);
+                videoUrl = null;
+            }
+
+            isPlaying = true;
+            initParticles();
+            startRecording(); 
+            animate();
+        });
+
+        // 綁定返回按鈕
+        backBtn.addEventListener('click', () => {
+            isPlaying = false;
+            cancelAnimationFrame(animationFrameId);
+            
+            if (isRecording) {
+                mediaRecorder.stop();
+                isRecording = false;
+            }
+            recordedChunks = [];
+            if (videoUrl) {
+                URL.revokeObjectURL(videoUrl);
+                videoUrl = null;
+            }
+
+            // 重置所有視覺變數
+            phase = -1;
+            fadeAlpha = 0;
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, w, h);
+            particles = [];
+            ambientParticles = [];
+
+            uiContainer.classList.remove('hidden');
+            backBtn.classList.add('hidden');
+            saveBtn.classList.add('hidden');
+            textInput.focus();
+        });
+
+        // 綁定錄影/儲存按鈕
+        saveBtn.addEventListener('click', () => {
+            if (isRecording) {
+                downloadPending = true;
+                stopRecording();
+            } else if (videoUrl) {
+                executeDownload();
+            }
+        });
+
+        function startRecording() {
+            recordedChunks = [];
+            videoUrl = null;
+            downloadPending = false;
+            const stream = canvas.captureStream(60); 
+            
+            let mimeType = 'video/mp4';
+            if (!MediaRecorder.isTypeSupported(mimeType)) {
+                mimeType = 'video/webm; codecs=vp9';
+                if (!MediaRecorder.isTypeSupported(mimeType)) {
+                    mimeType = 'video/webm';
+                }
+            }
+            videoExt = mimeType.includes('mp4') ? 'mp4' : 'webm';
+
+            try {
+                mediaRecorder = new MediaRecorder(stream, { mimeType: mimeType });
+            } catch (e) {
+                console.warn('您的瀏覽器不支援畫面錄製功能');
+                return;
+            }
+
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) recordedChunks.push(event.data);
+            };
+
+            mediaRecorder.onstop = () => {
+                const blob = new Blob(recordedChunks, { type: mimeType });
+                videoUrl = URL.createObjectURL(blob);
+                recordedChunks = []; 
+                
+                if (downloadPending) {
+                    executeDownload();
+                    downloadPending = false;
+                }
+            };
+
+            mediaRecorder.start();
+            isRecording = true;
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+            }
+            isRecording = false;
+        }
+
+        function executeDownload() {
+            if (!videoUrl) return;
+            const a = document.createElement('a');
+            document.body.appendChild(a);
+            a.style = 'display: none';
+            a.href = videoUrl;
+            a.download = `${currentText}_animation.${videoExt}`;
+            a.click();
+        }
+
+        // (移除原本的 isPattern 函式，因為它會過度挖空像素導致中文字看不懂)
+
+        // 粒子類別
+        class Particle {
+            constructor(tx, ty, r, g, b) {
+                this.tx = tx;
+                this.ty = ty;
+                this.color = `rgb(${r},${g},${b})`; // 新增：支援彩色粒子 (讓 Emoji 能顯示顏色)
+                this.rippleFactor = 0;
+                this.active = false;
+
+                // 初始隨機散佈在更廣的畫面上 (擴大到 -0.5倍 ~ 1.5倍 寬高，確保鏡頭偏移不會穿幫)
+                this.x = (Math.random() * 2 - 0.5) * w;
+                this.y = (Math.random() * 2 - 0.5) * h;
+                // 改為給予向左的漂浮初速 (確保一開始都是往左飄)
+                this.vx = -(Math.random() * 2.0 + 0.5);
+                this.vy = (Math.random() - 0.5) * 1.5;
+                
+                this.size = Math.random() > 0.8 ? 2.5 : 1.2;
+                // 【修改這裡】提高基礎透明度 (0.8~1.0)，讓 Emoji 或彩色像素更加飽和、清晰鮮豔
+                this.targetAlpha = Math.random() * 0.2 + 0.8;
+            }
+
+            update() {
+                if (phase === -1) {
+                    // [階段 -1] 自由漂浮，一律往左，超出擴展左邊界就從擴展右邊出來
+                    if (this.x < -w * 0.5) this.x = w * 1.5;
+                    if (this.y < -h * 0.5) this.y = h * 1.5;
+                    if (this.y > h * 1.5) this.y = -h * 0.5;
+                } else {
+                    // 當掃描線推進時，啟動粒子
+                    if (revealX > this.tx && !this.active) {
+                        this.active = true;
+                    }
+
+                    if (this.active) {
+                        // 彈簧物理：被極速吸附到目標位置
+                        const dx = this.tx - this.x;
+                        const dy = this.ty - this.y;
+                        this.vx += dx * 0.012; 
+                        this.vy += dy * 0.012;
+                        this.vx *= 0.85; // 阻力
+                        this.vy *= 0.85;
+
+                        // 當粒子靠近目標時，平滑增加水波紋的影響力
+                        if (Math.abs(dx) + Math.abs(dy) < 5) {
+                            this.rippleFactor += 0.02;
+                            if (this.rippleFactor > 1) this.rippleFactor = 1;
+                        }
+                    } else {
+                        // 尚未被掃描線掃到，維持往左漂浮
+                        if (this.x < -w * 0.5) this.x = w * 1.5;
+                    }
+                }
+
+                this.x += this.vx;
+                this.y += this.vy;
+            }
+        }
+
+        // 初始化所有粒子與場景
+        function initParticles() {
+            particles = [];
+            ambientParticles = [];
+            
+            const offscreenCanvas = document.createElement('canvas');
+            offscreenCanvas.width = w;
+            offscreenCanvas.height = h;
+            const octx = offscreenCanvas.getContext('2d', { willReadFrequently: true });
+
+            let fontSize = Math.min(w * 0.28, 400); 
+            // 將英文字型 (Impact) 放回最前面，中文字型與 Emoji 放後面作為備用字庫
+            const fontFamily = '"Impact", "Arial Black", "PingFang TC", "Heiti TC", "Microsoft JhengHei", "Noto Sans TC", "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
+            // 恢復字重 900 讓英文字看起來有震撼力
+            octx.font = `900 ${fontSize}px ${fontFamily}`;
+            
+            while (octx.measureText(currentText).width > w * 0.9 && fontSize > 20) {
+                fontSize -= 10;
+                octx.font = `900 ${fontSize}px ${fontFamily}`;
+            }
+
+            octx.textAlign = "center";
+            octx.textBaseline = "middle";
+            octx.fillStyle = "white"; // 預設字體顏色
+            octx.fillText(currentText, w / 2, h / 2);
+
+            // 計算文字的寬度與最左側邊界
+            textBounds.width = octx.measureText(currentText).width;
+            textBounds.left = w / 2 - textBounds.width / 2;
+            
+            // 波紋的正中心：設定在文字最開頭 (大約是第一個字母的位置)
+            rippleCenter.x = textBounds.left + textBounds.width * 0.05; 
+            rippleCenter.y = h / 2;
+
+            // 時間軸狀態歸零
+            phase = -1; // 從漂浮階段開始
+            holdFrames = 0;
+            preFloatFrames = 0;
+            fadeAlpha = 0;
+            globalTime = 0;
+
+            // --- 設定初始分鏡 ---
+            // 掃描線(生成進度)：從文字稍微偏左處開始
+            revealX = textBounds.left - w * 0.05;
+
+            // 初始鏡頭：從偏左開始，這樣準備對齊生成點時會順勢往右推，不會突兀反向
+            camera.scale = 1.0;
+            camera.fx = textBounds.left - w * 0.15;
+            camera.fy = h / 2;
+
+            // 目標鏡頭 (拉遠後)：恢復 1 倍大小，置中
+            targetCamera.scale = 1.0;
+            targetCamera.fx = w / 2;
+            targetCamera.fy = h / 2;
+
+            const imgData = octx.getImageData(0, 0, w, h).data;
+            const step = w > 800 ? 3 : 2; // 稍微調密集一點，確保中文字筆畫完整
+
+            for (let y = 0; y < h; y += step) {
+                for (let x = 0; x < w; x += step) {
+                    const index = (y * w + x) * 4;
+                    // 透明度大於 128 代表有像素 (包含文字與 Emoji)
+                    if (imgData[index + 3] > 128) {
+                        // 移除原本破壞字形的波紋過濾器，改為保留 85% 像素以維持清晰度
+                        if (Math.random() > 0.15) {
+                            const r = imgData[index];
+                            const g = imgData[index + 1];
+                            const b = imgData[index + 2];
+                            particles.push(new Particle(x, y, r, g, b));
+                        }
+                    }
+                }
+            }
+
+            // 環境背景漂流粒子 (同樣擴展生成範圍)
+            const ambientCount = w > 768 ? 200 : 100;
+            for (let i = 0; i < ambientCount; i++) {
+                ambientParticles.push({
+                    x: (Math.random() * 2 - 0.5) * w,
+                    y: (Math.random() * 2 - 0.5) * h,
+                    vx: -(Math.random() * 1.5 + 0.5), // 改為負值，確保背景也是往左飄浮
+                    size: Math.random() * 2 + 0.5,
+                    alpha: Math.random() * 0.3 + 0.1
+                });
+            }
+        }
+
+        // 動畫主迴圈
+        function animate() {
+            if (!isPlaying) return;
+
+            // 如果已經到階段 4（完全黑畫面），節省運算資源只畫黑底
+            if (phase === 4) {
+                ctx.setTransform(1, 0, 0, 1, 0, 0);
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(0, 0, w, h);
+                animationFrameId = requestAnimationFrame(animate);
+                return;
+            }
+            
+            // 1. 重置畫布與變形，確保背景填滿黑色不留殘影
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, w, h);
+
+            // 時間流動 (調小速度讓水波變慢)
+            globalTime += 0.01;
+
+            // 2. 套用虛擬攝影機變形 (Zoom & Pan)
+            ctx.translate(w / 2 - camera.fx * camera.scale, h / 2 - camera.fy * camera.scale);
+            ctx.scale(camera.scale, camera.scale);
+
+            // 繪製背景漂流粒子
+            ctx.fillStyle = '#ffffff';
+            ambientParticles.forEach(p => {
+                p.x += p.vx * 0.5; // 背景也稍微變慢
+                p.y += Math.sin(p.x * 0.01) * 0.5;
+                // 超出左側擴展邊界時，從右側擴展邊界重生
+                if (p.x < -w * 0.5) {
+                    p.x = w * 1.5;
+                    p.y = (Math.random() * 2 - 0.5) * h;
+                }
+                ctx.globalAlpha = p.alpha;
+                ctx.fillRect(p.x, p.y, p.size, p.size); 
+            });
+
+            // 繪製主文字粒子
+            let currentFillStyle = ''; // 用來快取顏色，提升 Canvas 渲染效能
+            particles.forEach(p => {
+                p.update();
+                
+                let renderX = p.x;
+                let renderY = p.y;
+                // 取消隱藏，讓所有粒子從一開始漂浮時就可見
+                let currentAlpha = p.targetAlpha; 
+
+                // 水波紋流動擴散特效 (改用平滑漸變因子，消除瞬間套用的跳躍感)
+                if (p.active && p.rippleFactor > 0) {
+                    const dx = p.tx - rippleCenter.x;
+                    const dy = p.ty - rippleCenter.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    const angle = Math.atan2(dy, dx);
+
+                    // 水波從中心往外擴散 (- globalTime 造成向外推移的效果)
+                    const wave = Math.sin(dist * 0.15 - globalTime * 3);
+                    const flowOffset = wave * 1.5 * p.rippleFactor; // 乘上漸變因子
+
+                    renderX += Math.cos(angle) * flowOffset;
+                    renderY += Math.sin(angle) * flowOffset;
+                    // 讓透明度也跟著水波產生呼吸閃爍感
+                    currentAlpha = Math.min(1, currentAlpha + wave * 0.25 * p.rippleFactor);
+                }
+
+                ctx.globalAlpha = Math.max(0, currentAlpha);
+                // 漂浮時稍微小一點，吸附成形時恢復大小
+                const currentSize = p.active ? p.size : p.size * 0.6;
+                if (currentAlpha > 0) {
+                    // 只有當顏色改變時才設定 fillStyle (確保 Emoji 多色彩能順暢顯示)
+                    if (currentFillStyle !== p.color) {
+                        ctx.fillStyle = p.color;
+                        currentFillStyle = p.color;
+                    }
+                    ctx.fillRect(renderX, renderY, currentSize, currentSize);
+                }
+            });
+
+            // 3. 回復畫布變形，準備處理全螢幕的轉場特效(漸隱)
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+            if (fadeAlpha > 0) {
+                // 用純黑做漸黑遮罩
+                ctx.fillStyle = `rgba(0, 0, 0, ${fadeAlpha})`;
+                ctx.fillRect(0, 0, w, h);
+            }
+
+            ctx.globalAlpha = 1;
+
+            // 4. 分鏡時間軸控制邏輯
+            if (phase === -1) {
+                // [階段-1] 畫面初始的自由漂浮
+                preFloatFrames++;
+                
+                // 鏡頭稍微緩慢推近，準備平滑聚焦到文字左側生成點
+                let targetStartFx = textBounds.left - w * 0.05;
+                camera.scale += (1.8 - camera.scale) * 0.01;
+                camera.fx += (targetStartFx - camera.fx) * 0.015;
+                camera.fy += (h / 2 - camera.fy) * 0.015;
+
+                if (preFloatFrames > 120) { // 停留約 2 秒
+                    phase = 0;
+                }
+            } else if (phase === 0) {
+                // [階段0] 推進與生成中
+                revealX += w * 0.0025; 
+                
+                // 鏡頭跟隨掃描線往右移，並慢慢放大至 2.0
+                camera.scale += (2.0 - camera.scale) * 0.02;
+                // 使用平滑追蹤取代瞬間鎖定，消除視角跳躍感
+                let targetFx = Math.min(revealX + textBounds.width * 0.2, textBounds.left + textBounds.width);
+                camera.fx += (targetFx - camera.fx) * 0.04;
+
+                if (revealX > textBounds.left + textBounds.width + w * 0.05) {
+                    phase = 1; // 文字生成完畢，進入下一階段
+                }
+            } else if (phase === 1) {
+                // [階段1] 整個鏡頭平滑拉遠 (拉遠速度變慢)
+                camera.fx += (targetCamera.fx - camera.fx) * 0.015;
+                camera.fy += (targetCamera.fy - camera.fy) * 0.015;
+                camera.scale += (targetCamera.scale - camera.scale) * 0.015;
+
+                // 移除硬性對齊(snap)邏輯，改為到達閾值就進入下一階段，讓數值自然滑順收斂
+                if (Math.abs(camera.scale - 1.0) < 0.01) {
+                    phase = 2; // 拉遠基本完成，進入停留流動
+                }
+            } else if (phase === 2) {
+                // 在 phase 2 繼續維持鏡頭平滑收斂，確保完全不會有「強制歸位」的卡頓跳躍感
+                camera.fx += (targetCamera.fx - camera.fx) * 0.015;
+                camera.fy += (targetCamera.fy - camera.fy) * 0.015;
+                camera.scale += (targetCamera.scale - camera.scale) * 0.015;
+
+                // [階段2] 停留，欣賞水波紋以開頭字母為中心繼續流動
+                holdFrames++;
+                if (holdFrames > 100) { // 縮短停留時間，大約停留 1.5 秒左右就進入漸黑
+                    phase = 3;
+                }
+            } else if (phase === 3) {
+                // [階段3] 畫面漸隱至全黑 (加快漸隱速度)
+                fadeAlpha += 0.015; 
+                if (fadeAlpha >= 1) {
+                    fadeAlpha = 1;
+                    phase = 4;
+                    // [階段4] 結束背景錄影，保留暫存檔等待使用者下載
+                    if (isRecording) {
+                        stopRecording();
+                    }
+                }
+            }
+
+            animationFrameId = requestAnimationFrame(animate);
+        }
+
+    </script>
+</body>
+</html>
