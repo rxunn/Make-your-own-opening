@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>rxunn 粒子動畫</title>
+    <title>MYOO — Make your own opening</title>
     <style>
         body, html {
             margin: 0;
@@ -39,51 +39,166 @@
             transition: opacity 0.4s ease, transform 0.4s ease;
         }
 
-        #text-input {
-            background: rgba(255, 255, 255, 0.05);
-            border: 2px solid rgba(255, 255, 255, 0.8);
-            border-radius: 12px;
+        /* 標題 */
+        #brand-title {
+            font-family: -apple-system, "SF Pro Display", system-ui, sans-serif;
+            font-size: 3.2rem;
+            font-weight: 800;
+            letter-spacing: 6px;
             color: #ffffff;
-            font-size: 2rem;
-            padding: 15px 30px;
             text-align: center;
-            outline: none;
-            width: 80vw;
-            max-width: 400px;
-            /* 將英文粗體字型 (Impact) 放回最前面，保留中文字型與 Emoji 在後方備用 */
-            font-family: "Impact", "Arial Black", "PingFang TC", "Heiti TC", "Microsoft JhengHei", "Noto Sans TC", "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
-            font-weight: bold;
-            letter-spacing: 2px;
+            user-select: none;
+        }
+        #brand-slogan {
+            font-family: -apple-system, "SF Pro Text", system-ui, sans-serif;
+            font-size: 0.95rem;
+            font-weight: 400;
+            letter-spacing: 1.5px;
+            color: rgba(255,255,255,0.35);
+            text-align: center;
+            margin-top: -10px;
+            user-select: none;
+        }
+
+        /* 統一輸入框 — 長條圓角膠囊 */
+        #input-box {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1.5px solid rgba(255, 255, 255, 0.25);
+            border-radius: 999px;
+            padding: 12px 14px 12px 22px;
+            width: 88vw;
+            max-width: 560px;
             transition: border-color 0.3s, background 0.3s;
         }
-
-        #text-input:focus {
-            border-color: #ffffff;
-            background: rgba(255, 255, 255, 0.1);
+        #input-box:focus-within {
+            border-color: rgba(255,255,255,0.5);
+            background: rgba(255, 255, 255, 0.09);
         }
 
-        #text-input::placeholder {
-            color: rgba(255, 255, 255, 0.3);
-            font-size: 1.5rem;
+        #text-input {
+            flex: 1;
+            min-width: 0;
+            min-height: 1.4em;
+            color: #ffffff;
+            font-size: 1.4rem;
+            outline: none;
+            font-family: -apple-system, "SF Pro Display", "SF Pro Text", "PingFang TC", "Heiti TC", "Microsoft JhengHei", "Noto Sans TC", system-ui, sans-serif;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+        #text-input:empty::before {
+            content: 'Typing...';
+            color: rgba(255,255,255,0.25);
+            pointer-events: none;
+        }
+        #text-input img {
+            height: 1.8em;
+            width: auto;
+            vertical-align: middle;
+            border-radius: 4px;
+            margin: 0 4px;
         }
 
-        #start-btn {
-            background: #ffffff;
-            color: #000000;
+        /* 右側按鈕群 */
+        #input-actions {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+        .input-icon-btn {
+            background: none;
             border: none;
-            padding: 15px 40px;
-            font-size: 1.2rem;
-            font-weight: bold;
-            border-radius: 30px;
             cursor: pointer;
-            transition: transform 0.2s ease, opacity 0.2s ease;
-            box-shadow: 0 4px 15px rgba(255, 255, 255, 0.2);
+            padding: 8px;
+            color: rgba(255,255,255,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: color 0.2s, background 0.2s;
+        }
+        .input-icon-btn:hover {
+            color: #fff;
+            background: rgba(255,255,255,0.1);
+        }
+        .input-icon-btn svg {
+            width: 22px;
+            height: 22px;
+            stroke: currentColor;
+            stroke-width: 1.8;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        /* start 按鈕 — 同樣純白線條，無背景 */
+        #start-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 8px;
+            color: rgba(255,255,255,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: color 0.2s, background 0.2s;
+        }
+        #start-btn:hover {
+            color: #fff;
+            background: rgba(255,255,255,0.1);
+        }
+        #start-btn svg {
+            width: 22px;
+            height: 22px;
+            stroke: currentColor;
+            stroke-width: 1.8;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
         }
 
-        #start-btn:hover {
-            transform: scale(1.05);
-            opacity: 0.9;
+        #file-input {
+            display: none;
         }
+
+        /* 載入遮罩 */
+        #loading-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #fff;
+            font-size: 1.2rem;
+            gap: 20px;
+        }
+        .progress-bar-wrap {
+            width: 60vw;
+            max-width: 360px;
+            height: 6px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: #ffffff;
+            border-radius: 3px;
+            transition: width 0.2s ease;
+        }
+
 
         /* 圖示按鈕共通樣式 */
         .icon-btn {
@@ -128,6 +243,11 @@
             bottom: 20px;
             right: 20px;
         }
+        #save-btn.disabled {
+            opacity: 0.15 !important;
+            pointer-events: none;
+            cursor: default;
+        }
 
         .hidden {
             display: none !important;
@@ -144,14 +264,92 @@
         .shake {
             animation: shake 0.4s ease-in-out;
         }
+
+        /* 圖片調整控制面板 */
+        #img-controls {
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+            width: 88vw;
+            max-width: 560px;
+            padding: 14px 22px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 16px;
+        }
+        #img-controls.visible {
+            display: flex;
+        }
+        .ctrl-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .ctrl-row label {
+            font-family: -apple-system, "SF Pro Text", system-ui, sans-serif;
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.45);
+            min-width: 50px;
+            user-select: none;
+        }
+        .ctrl-row input[type="range"] {
+            flex: 1;
+            -webkit-appearance: none;
+            appearance: none;
+            height: 4px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 2px;
+            outline: none;
+        }
+        .ctrl-row input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #fff;
+            cursor: pointer;
+        }
+        .ctrl-row .ctrl-val {
+            font-family: -apple-system, "SF Pro Text", system-ui, sans-serif;
+            font-size: 0.75rem;
+            color: rgba(255,255,255,0.35);
+            min-width: 32px;
+            text-align: right;
+        }
     </style>
 </head>
 <body>
 
     <!-- 文字輸入介面 -->
     <div id="ui-container">
-        <input type="text" id="text-input" placeholder="Typing..." value="" autocomplete="off" />
-        <button id="start-btn">start</button>
+        <div id="brand-title">MYOO</div>
+        <div id="brand-slogan">Make your own opening.</div>
+        <div id="input-box">
+            <div id="text-input" contenteditable="true" spellcheck="false"></div>
+            <div id="input-actions">
+                <!-- + 上傳照片 -->
+                <button id="upload-btn" class="input-icon-btn" title="Upload photo">
+                    <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                </button>
+                <!-- > Start -->
+                <button id="start-btn" title="Start">
+                    <svg viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></svg>
+                </button>
+            </div>
+        </div>
+        <input type="file" id="file-input" accept="image/*" />
+        <div id="img-controls">
+            <div class="ctrl-row">
+                <label>大小</label>
+                <input type="range" id="img-scale-slider" min="50" max="500" value="250">
+                <span class="ctrl-val" id="img-scale-val">2.5x</span>
+            </div>
+            <div class="ctrl-row">
+                <label>上下</label>
+                <input type="range" id="img-y-slider" min="-200" max="200" value="0">
+                <span class="ctrl-val" id="img-y-val">0</span>
+            </div>
+        </div>
     </div>
 
     <!-- 左上角：返回按鈕 -->
@@ -174,16 +372,21 @@
     <!-- 畫布 -->
     <canvas id="canvas"></canvas>
 
-    <script>
+    <script type="module">
+        import { removeBackground } from 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.5/+esm';
+
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d', { alpha: false });
-        
+
         // UI 元素
         const uiContainer = document.getElementById('ui-container');
         const textInput = document.getElementById('text-input');
         const startBtn = document.getElementById('start-btn');
         const backBtn = document.getElementById('back-btn');
         const saveBtn = document.getElementById('save-btn');
+        const uploadBtn = document.getElementById('upload-btn');
+        const fileInput = document.getElementById('file-input');
+
 
         let w, h;
         let particles = [];
@@ -191,6 +394,106 @@
         let isPlaying = false;
         let animationFrameId;
         let currentText = "rxunn";
+        let uploadedImageData = null;
+
+        // === Web Audio 音效系統 ===
+        let audioCtx = null;
+        let masterGain = null;
+        let bgDrone = null;
+        let formationOsc = null;
+        let formationGain = null;
+
+        function initAudio() {
+            if (audioCtx) return;
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            masterGain = audioCtx.createGain();
+            masterGain.gain.value = 0;
+            masterGain.connect(audioCtx.destination);
+        }
+
+        function startAmbientAudio() {
+            initAudio();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const now = audioCtx.currentTime;
+
+            // 背景 drone：多個低頻振盪器 + 空間感
+            bgDrone = [];
+            const freqs = [55, 82.5, 110, 165]; // A1, E2, A2, E3 — 空靈五度
+            freqs.forEach((f, i) => {
+                const osc = audioCtx.createOscillator();
+                const g = audioCtx.createGain();
+                osc.type = i < 2 ? 'sine' : 'triangle';
+                osc.frequency.value = f;
+                osc.detune.value = Math.random() * 10 - 5; // 微失諧增加空間感
+                g.gain.value = 0;
+                osc.connect(g);
+                g.connect(masterGain);
+                osc.start(now);
+                // 緩慢淡入
+                g.gain.linearRampToValueAtTime(i < 2 ? 0.12 : 0.06, now + 2);
+                bgDrone.push({ osc, gain: g });
+            });
+
+            // 加一個 LFO 控制音量做呼吸感
+            const lfo = audioCtx.createOscillator();
+            const lfoGain = audioCtx.createGain();
+            lfo.type = 'sine';
+            lfo.frequency.value = 0.15; // 很慢的呼吸
+            lfoGain.gain.value = 0.03;
+            lfo.connect(lfoGain);
+            lfoGain.connect(masterGain.gain);
+            lfo.start(now);
+            bgDrone.push({ osc: lfo, gain: lfoGain });
+
+            // 主音量淡入
+            masterGain.gain.cancelScheduledValues(now);
+            masterGain.gain.setValueAtTime(0, now);
+            masterGain.gain.linearRampToValueAtTime(0.7, now + 2);
+
+            // 粒子成形時的高頻音效（預先建立，phase 0 時啟用）
+            formationOsc = audioCtx.createOscillator();
+            formationGain = audioCtx.createGain();
+            formationOsc.type = 'sine';
+            formationOsc.frequency.value = 800;
+            formationGain.gain.value = 0;
+            formationOsc.connect(formationGain);
+            formationGain.connect(masterGain);
+            formationOsc.start(now);
+        }
+
+        function updateAudio() {
+            if (!audioCtx || !masterGain) return;
+            const now = audioCtx.currentTime;
+
+            if (phase === 0 && formationGain) {
+                // 成形中：高頻音漸入，頻率隨掃描進度上升
+                const progress = (revealX - textBounds.left) / textBounds.width;
+                const freq = 600 + progress * 800; // 600Hz → 1400Hz
+                formationOsc.frequency.setTargetAtTime(freq, now, 0.1);
+                formationGain.gain.setTargetAtTime(0.08, now, 0.3);
+            } else if (phase === 1 && formationGain) {
+                // 成形結束：高頻淡出
+                formationGain.gain.setTargetAtTime(0, now, 0.5);
+            } else if (phase === 3) {
+                // 畫面漸隱：音量也跟著淡出
+                masterGain.gain.setTargetAtTime(0, now, 1.5);
+            }
+        }
+
+        function stopAllAudio() {
+            if (!audioCtx) return;
+            const now = audioCtx.currentTime;
+            masterGain.gain.cancelScheduledValues(now);
+            masterGain.gain.setValueAtTime(masterGain.gain.value, now);
+            masterGain.gain.linearRampToValueAtTime(0, now + 0.3);
+            setTimeout(() => {
+                if (bgDrone) bgDrone.forEach(n => { try { n.osc.stop(); } catch(e){} });
+                if (formationOsc) try { formationOsc.stop(); } catch(e){}
+                bgDrone = null;
+                formationOsc = null;
+                formationGain = null;
+            }, 400);
+        }
         
         // 分鏡與時間軸變數
         let phase = -1; // 修改：增加 -1 作為前置漂浮階段
@@ -247,28 +550,50 @@
         window.addEventListener('resize', resize);
         resize();
 
-        // 綁定輸入框 Enter 鍵直接開始
-        textInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') startBtn.click();
+        // contenteditable: Enter 觸發 start，阻止換行
+        textInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); startBtn.click(); }
         });
+        // 確保刪光文字後 :empty 偽類能正常觸發 placeholder
+        textInput.addEventListener('input', () => {
+            if (textInput.innerHTML === '<br>' || textInput.innerHTML === '<div><br></div>') {
+                textInput.innerHTML = '';
+            }
+        });
+        // 阻止貼上 HTML，只保留純文字（但保留已插入的 img）
+        textInput.addEventListener('paste', (e) => {
+            e.preventDefault();
+            const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+            document.execCommand('insertText', false, text);
+        });
+
+        // 從 contenteditable 取得純文字（不含 img）
+        function getInputText() {
+            let text = '';
+            textInput.childNodes.forEach(n => {
+                if (n.nodeType === Node.TEXT_NODE) text += n.textContent;
+            });
+            return text.trim();
+        }
 
         // 綁定開始按鈕
         startBtn.addEventListener('click', () => {
-            const val = textInput.value.trim();
-            
-            // 如果沒輸入文字，觸發震動動畫並中斷執行
-            if (val === "") {
+            const val = getInputText();
+
+            // 如果沒有上傳照片也沒輸入文字，觸發震動動畫並中斷執行
+            if (!uploadedImageData && val === "") {
                 textInput.classList.remove('shake');
-                void textInput.offsetWidth; // 觸發重繪以重啟動畫
+                void textInput.offsetWidth;
                 textInput.classList.add('shake');
                 return;
             }
-            
-            currentText = val;
-            
+
+            currentText = val || currentText;
+
             uiContainer.classList.add('hidden');
             backBtn.classList.remove('hidden');
             saveBtn.classList.remove('hidden');
+            saveBtn.classList.add('disabled');
             
             if (videoUrl) {
                 URL.revokeObjectURL(videoUrl);
@@ -277,7 +602,8 @@
 
             isPlaying = true;
             initParticles();
-            startRecording(); 
+            startAmbientAudio();
+            startRecording();
             animate();
         });
 
@@ -297,6 +623,7 @@
             }
 
             // 重置所有視覺變數
+            uploadedImageData = null;
             phase = -1;
             fadeAlpha = 0;
             ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -306,11 +633,114 @@
             particles = [];
             ambientParticles = [];
 
+            // 清空 contenteditable（清掉殘留 <br> 確保 :empty 偽類生效顯示 placeholder）
+            textInput.innerHTML = '';
+            stopAllAudio();
             uiContainer.classList.remove('hidden');
             backBtn.classList.add('hidden');
             saveBtn.classList.add('hidden');
             textInput.focus();
         });
+
+        // 綁定上傳照片按鈕
+        uploadBtn.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            // 顯示載入遮罩（含進度條）
+            const overlay = document.createElement('div');
+            overlay.id = 'loading-overlay';
+            overlay.innerHTML = `
+                <div style="font-size:1.2rem">去背處理中...</div>
+                <div class="progress-bar-wrap">
+                    <div class="progress-bar-fill"></div>
+                </div>
+                <div class="progress-text" style="font-size:0.9rem;opacity:0.6">0%</div>
+            `;
+            document.body.appendChild(overlay);
+            const fillBar = overlay.querySelector('.progress-bar-fill');
+            const pctText = overlay.querySelector('.progress-text');
+
+            try {
+                const blob = await removeBackground(file, {
+                    progress: (key, current, total) => {
+                        // 將各階段映射到進度條
+                        let pct = 0;
+                        if (key === 'fetch:model') {
+                            pct = Math.round((current / total) * 30); // 0~30%
+                        } else if (key === 'compute:inference') {
+                            pct = 30 + Math.round((current / total) * 70); // 30~100%
+                        }
+                        fillBar.style.width = pct + '%';
+                        pctText.textContent = pct + '%';
+                    }
+                });
+
+                // 將去背結果轉為 canvas
+                const img = await createImageBitmap(blob);
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = img.width;
+                tempCanvas.height = img.height;
+                const tctx = tempCanvas.getContext('2d');
+                tctx.drawImage(img, 0, 0);
+                uploadedImageData = {
+                    canvas: tempCanvas,
+                    width: img.width,
+                    height: img.height
+                };
+
+                currentText = file.name.replace(/\.[^.]+$/, '');
+                overlay.remove();
+
+                // 去背完成 → 將縮圖插入 contenteditable 游標位置
+                const thumbUrl = URL.createObjectURL(blob);
+                // 移除舊圖（如有）
+                textInput.querySelectorAll('img').forEach(img => img.remove());
+                const imgEl = document.createElement('img');
+                imgEl.src = thumbUrl;
+                imgEl.setAttribute('data-photo', '1');
+                // 插入到游標位置（或末尾）
+                const sel = window.getSelection();
+                if (sel.rangeCount && textInput.contains(sel.anchorNode)) {
+                    const range = sel.getRangeAt(0);
+                    range.insertNode(imgEl);
+                    range.setStartAfter(imgEl);
+                    range.collapse(true);
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                } else {
+                    textInput.appendChild(imgEl);
+                }
+                textInput.focus();
+
+            } catch (err) {
+                console.error('去背失敗:', err);
+                fillBar.style.background = '#ff4444';
+                pctText.textContent = '去背失敗，請重試';
+                setTimeout(() => overlay.remove(), 2000);
+            }
+
+            fileInput.value = '';
+        });
+
+        // === 從 contenteditable 解析圖文排列 ===
+        function parseInputLayout() {
+            let textBefore = '', textAfter = '';
+            let foundImg = false;
+            textInput.childNodes.forEach(n => {
+                if (n.nodeType === Node.ELEMENT_NODE && n.tagName === 'IMG') {
+                    foundImg = true;
+                } else if (n.nodeType === Node.TEXT_NODE) {
+                    if (foundImg) textAfter += n.textContent;
+                    else textBefore += n.textContent;
+                }
+            });
+            return { textBefore: textBefore.trim(), textAfter: textAfter.trim(), hasImg: foundImg };
+        }
 
         // 綁定錄影/儲存按鈕
         saveBtn.addEventListener('click', () => {
@@ -398,7 +828,10 @@
                 this.vx = -(Math.random() * 2.0 + 0.5);
                 this.vy = (Math.random() - 0.5) * 1.5;
                 
-                this.size = Math.random() > 0.8 ? 2.5 : 1.2;
+                // 照片模式粒子加大，讓圖片更清晰
+                this.size = uploadedImageData
+                    ? (Math.random() > 0.8 ? 4.0 : 3.0)
+                    : (Math.random() > 0.8 ? 2.5 : 1.2);
                 // 【修改這裡】提高基礎透明度 (0.8~1.0)，讓 Emoji 或彩色像素更加飽和、清晰鮮豔
                 this.targetAlpha = Math.random() * 0.2 + 0.8;
             }
@@ -444,34 +877,86 @@
         function initParticles() {
             particles = [];
             ambientParticles = [];
-            
+
             const offscreenCanvas = document.createElement('canvas');
             offscreenCanvas.width = w;
             offscreenCanvas.height = h;
             const octx = offscreenCanvas.getContext('2d', { willReadFrequently: true });
 
-            let fontSize = Math.min(w * 0.28, 400); 
-            // 將英文字型 (Impact) 放回最前面，中文字型與 Emoji 放後面作為備用字庫
+            // === 解析 contenteditable 中的圖文排列 ===
+            const layout = parseInputLayout();
             const fontFamily = '"Impact", "Arial Black", "PingFang TC", "Heiti TC", "Microsoft JhengHei", "Noto Sans TC", "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
-            // 恢復字重 900 讓英文字看起來有震撼力
-            octx.font = `900 ${fontSize}px ${fontFamily}`;
-            
-            while (octx.measureText(currentText).width > w * 0.9 && fontSize > 20) {
-                fontSize -= 10;
+            let fontSize = Math.min(w * 0.28, 400);
+            const gap = fontSize * 0.15;
+
+            // 合併全部文字來計算 fontSize，考慮圖片實際寬度
+            const allText = (layout.textBefore + layout.textAfter).trim();
+            if (allText || (uploadedImageData && layout.hasImg)) {
                 octx.font = `900 ${fontSize}px ${fontFamily}`;
+                const estimateTotal = () => {
+                    let tw = allText ? octx.measureText(allText).width : 0;
+                    if (uploadedImageData && layout.hasImg) {
+                        // 圖片等比放大到 fontSize*1.1 高度後的寬度
+                        tw += (uploadedImageData.width / uploadedImageData.height) * fontSize * 1.1;
+                        tw += fontSize * 0.15; // gap
+                    }
+                    return tw;
+                };
+                while (estimateTotal() > w * 0.9 && fontSize > 20) {
+                    fontSize -= 10;
+                    octx.font = `900 ${fontSize}px ${fontFamily}`;
+                }
             }
 
-            octx.textAlign = "center";
-            octx.textBaseline = "middle";
-            octx.fillStyle = "white"; // 預設字體顏色
-            octx.fillText(currentText, w / 2, h / 2);
+            octx.font = `900 ${fontSize}px ${fontFamily}`;
+            const bw = layout.textBefore ? octx.measureText(layout.textBefore).width : 0;
+            const aw = layout.textAfter ? octx.measureText(layout.textAfter).width : 0;
 
-            // 計算文字的寬度與最左側邊界
-            textBounds.width = octx.measureText(currentText).width;
-            textBounds.left = w / 2 - textBounds.width / 2;
+            // 圖片尺寸 — 高度與文字一樣大（fontSize = 文字的完整高度）
+            let imgDrawW = 0, imgDrawH = 0;
+            if (uploadedImageData && layout.hasImg) {
+                const src = uploadedImageData;
+                // 用 fontSize * 1.1 讓圖片跟大寫字母視覺等高
+                const targetH = fontSize * 1.1;
+                // 不再限制寬度比例，讓圖片等比放大到跟文字一樣高
+                const imgScale = targetH / src.height;
+                imgDrawW = src.width * imgScale;
+                imgDrawH = targetH;
+            }
+
+            // 排列：textBefore + [img] + textAfter，全部水平置中
+            const parts = [];
+            if (bw > 0) parts.push({ type: 'text', text: layout.textBefore, w: bw });
+            if (imgDrawW > 0) parts.push({ type: 'img', w: imgDrawW, h: imgDrawH });
+            if (aw > 0) parts.push({ type: 'text', text: layout.textAfter, w: aw });
+            // 如果沒有圖片但有文字（純文字模式）
+            if (parts.length === 0 && allText) {
+                parts.push({ type: 'text', text: allText, w: octx.measureText(allText).width });
+            }
+
+            const totalGap = (parts.length - 1) * gap;
+            const totalW = parts.reduce((s, p) => s + p.w, 0) + totalGap;
+            let cursorX = (w - totalW) / 2;
+
+            octx.textAlign = "left";
+            octx.textBaseline = "middle";
+            octx.fillStyle = "white";
+
+            parts.forEach((p, i) => {
+                if (p.type === 'text') {
+                    octx.font = `900 ${fontSize}px ${fontFamily}`;
+                    octx.fillText(p.text, cursorX, h / 2);
+                } else {
+                    octx.drawImage(uploadedImageData.canvas, cursorX, h / 2 - p.h / 2, p.w, p.h);
+                }
+                cursorX += p.w + gap;
+            });
+
+            textBounds.left = (w - totalW) / 2;
+            textBounds.width = totalW;
             
-            // 波紋的正中心：設定在文字最開頭 (大約是第一個字母的位置)
-            rippleCenter.x = textBounds.left + textBounds.width * 0.05; 
+            // 波紋中心：畫面正中央，讓同心圓均勻擴散
+            rippleCenter.x = w / 2;
             rippleCenter.y = h / 2;
 
             // 時間軸狀態歸零
@@ -496,15 +981,18 @@
             targetCamera.fy = h / 2;
 
             const imgData = octx.getImageData(0, 0, w, h).data;
-            const step = w > 800 ? 3 : 2; // 稍微調密集一點，確保中文字筆畫完整
+            // 照片模式：用與粒子大小匹配的間距，確保無間隙、圖片清晰
+            const step = uploadedImageData ? 3 : (w > 800 ? 3 : 2);
+            // 照片模式的 alpha 門檻較低以保留更多細節
+            const alphaThreshold = uploadedImageData ? 30 : 128;
+            // 照片模式不跳過任何像素
+            const skipRate = uploadedImageData ? 0 : 0.15;
 
             for (let y = 0; y < h; y += step) {
                 for (let x = 0; x < w; x += step) {
                     const index = (y * w + x) * 4;
-                    // 透明度大於 128 代表有像素 (包含文字與 Emoji)
-                    if (imgData[index + 3] > 128) {
-                        // 移除原本破壞字形的波紋過濾器，改為保留 85% 像素以維持清晰度
-                        if (Math.random() > 0.15) {
+                    if (imgData[index + 3] > alphaThreshold) {
+                        if (Math.random() > skipRate) {
                             const r = imgData[index];
                             const g = imgData[index + 1];
                             const b = imgData[index + 2];
@@ -576,21 +1064,24 @@
                 // 取消隱藏，讓所有粒子從一開始漂浮時就可見
                 let currentAlpha = p.targetAlpha; 
 
-                // 水波紋流動擴散特效 (改用平滑漸變因子，消除瞬間套用的跳躍感)
+                // 水波紋流動擴散特效 — 強化版：像示意圖一樣的同心圓擴散
                 if (p.active && p.rippleFactor > 0) {
                     const dx = p.tx - rippleCenter.x;
                     const dy = p.ty - rippleCenter.y;
                     const dist = Math.sqrt(dx * dx + dy * dy);
                     const angle = Math.atan2(dy, dx);
 
-                    // 水波從中心往外擴散 (- globalTime 造成向外推移的效果)
-                    const wave = Math.sin(dist * 0.15 - globalTime * 3);
-                    const flowOffset = wave * 1.5 * p.rippleFactor; // 乘上漸變因子
+                    // 多層同心波紋疊加，產生更豐富的水波擴散效果
+                    const wave1 = Math.sin(dist * 0.06 - globalTime * 4);
+                    const wave2 = Math.sin(dist * 0.12 - globalTime * 3) * 0.5;
+                    const wave = wave1 + wave2;
+                    // 放大位移量，讓波紋清晰可見
+                    const flowOffset = wave * 5.0 * p.rippleFactor;
 
                     renderX += Math.cos(angle) * flowOffset;
                     renderY += Math.sin(angle) * flowOffset;
-                    // 讓透明度也跟著水波產生呼吸閃爍感
-                    currentAlpha = Math.min(1, currentAlpha + wave * 0.25 * p.rippleFactor);
+                    // 透明度呼吸感也加強
+                    currentAlpha = Math.min(1, currentAlpha + wave * 0.3 * p.rippleFactor);
                 }
 
                 ctx.globalAlpha = Math.max(0, currentAlpha);
@@ -672,12 +1163,14 @@
                     fadeAlpha = 1;
                     phase = 4;
                     // [階段4] 結束背景錄影，保留暫存檔等待使用者下載
+                    saveBtn.classList.remove('disabled');
                     if (isRecording) {
                         stopRecording();
                     }
                 }
             }
 
+            updateAudio();
             animationFrameId = requestAnimationFrame(animate);
         }
 
