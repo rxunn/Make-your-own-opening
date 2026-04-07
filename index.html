@@ -98,11 +98,11 @@
             pointer-events: none;
         }
         #text-input img {
-            height: 1.8em;
+            height: 2.8em;
             width: auto;
             vertical-align: middle;
-            border-radius: 4px;
-            margin: 0 4px;
+            border-radius: 6px;
+            margin: 0 6px;
         }
 
         /* 右側按鈕群 */
@@ -315,6 +315,63 @@
             color: rgba(255,255,255,0.35);
             min-width: 32px;
             text-align: right;
+        }
+
+        /* 去背選擇對話框 */
+        #bg-choice-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.75);
+            z-index: 100;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #bg-choice-box {
+            background: rgba(30,30,30,0.95);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 20px;
+            padding: 28px 32px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            max-width: 340px;
+            width: 85vw;
+        }
+        #bg-choice-preview {
+            max-width: 180px;
+            max-height: 180px;
+            border-radius: 12px;
+            object-fit: contain;
+        }
+        #bg-choice-box .choice-title {
+            font-family: -apple-system, "SF Pro Text", system-ui, sans-serif;
+            font-size: 1rem;
+            color: rgba(255,255,255,0.7);
+            text-align: center;
+        }
+        #bg-choice-box .choice-btns {
+            display: flex;
+            gap: 12px;
+            width: 100%;
+        }
+        #bg-choice-box .choice-btn {
+            flex: 1;
+            padding: 12px 0;
+            border-radius: 12px;
+            border: 1.5px solid rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.06);
+            color: #fff;
+            font-family: -apple-system, "SF Pro Text", system-ui, sans-serif;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: background 0.2s, border-color 0.2s;
+        }
+        #bg-choice-box .choice-btn:hover {
+            background: rgba(255,255,255,0.12);
+            border-color: rgba(255,255,255,0.4);
         }
     </style>
 </head>
@@ -651,37 +708,86 @@
             const file = e.target.files[0];
             if (!file) return;
 
-            // 顯示載入遮罩（含進度條）
-            const overlay = document.createElement('div');
-            overlay.id = 'loading-overlay';
-            overlay.innerHTML = `
-                <div style="font-size:1.2rem">去背處理中...</div>
-                <div class="progress-bar-wrap">
-                    <div class="progress-bar-fill"></div>
+            // 顯示選擇對話框：去背 or 保留原圖
+            const previewUrl = URL.createObjectURL(file);
+            const choiceOverlay = document.createElement('div');
+            choiceOverlay.id = 'bg-choice-overlay';
+            choiceOverlay.innerHTML = `
+                <div id="bg-choice-box">
+                    <img id="bg-choice-preview" src="${previewUrl}" />
+                    <div class="choice-title">要去除背景嗎？</div>
+                    <div class="choice-btns">
+                        <button class="choice-btn" data-choice="keep">保留原圖</button>
+                        <button class="choice-btn" data-choice="remove">去背</button>
+                    </div>
                 </div>
-                <div class="progress-text" style="font-size:0.9rem;opacity:0.6">0%</div>
             `;
-            document.body.appendChild(overlay);
-            const fillBar = overlay.querySelector('.progress-bar-fill');
-            const pctText = overlay.querySelector('.progress-text');
+            document.body.appendChild(choiceOverlay);
 
-            try {
-                const blob = await removeBackground(file, {
-                    progress: (key, current, total) => {
-                        // 將各階段映射到進度條
-                        let pct = 0;
-                        if (key === 'fetch:model') {
-                            pct = Math.round((current / total) * 30); // 0~30%
-                        } else if (key === 'compute:inference') {
-                            pct = 30 + Math.round((current / total) * 70); // 30~100%
-                        }
-                        fillBar.style.width = pct + '%';
-                        pctText.textContent = pct + '%';
-                    }
+            const choice = await new Promise(resolve => {
+                choiceOverlay.querySelectorAll('.choice-btn').forEach(btn => {
+                    btn.addEventListener('click', () => resolve(btn.dataset.choice));
                 });
+            });
+            choiceOverlay.remove();
+            URL.revokeObjectURL(previewUrl);
 
-                // 將去背結果轉為 canvas
-                const img = await createImageBitmap(blob);
+            if (choice === 'remove') {
+                // 去背流程
+                const overlay = document.createElement('div');
+                overlay.id = 'loading-overlay';
+                overlay.innerHTML = `
+                    <div style="font-size:1.2rem">去背處理中...</div>
+                    <div class="progress-bar-wrap">
+                        <div class="progress-bar-fill"></div>
+                    </div>
+                    <div class="progress-text" style="font-size:0.9rem;opacity:0.6">0%</div>
+                `;
+                document.body.appendChild(overlay);
+                const fillBar = overlay.querySelector('.progress-bar-fill');
+                const pctText = overlay.querySelector('.progress-text');
+
+                try {
+                    const blob = await removeBackground(file, {
+                        progress: (key, current, total) => {
+                            let pct = 0;
+                            if (key === 'fetch:model') {
+                                pct = Math.round((current / total) * 30);
+                            } else if (key === 'compute:inference') {
+                                pct = 30 + Math.round((current / total) * 70);
+                            }
+                            fillBar.style.width = pct + '%';
+                            pctText.textContent = pct + '%';
+                        }
+                    });
+
+                    const img = await createImageBitmap(blob);
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = img.width;
+                    tempCanvas.height = img.height;
+                    const tctx = tempCanvas.getContext('2d');
+                    tctx.drawImage(img, 0, 0);
+                    uploadedImageData = {
+                        canvas: tempCanvas,
+                        width: img.width,
+                        height: img.height
+                    };
+
+                    currentText = file.name.replace(/\.[^.]+$/, '');
+                    overlay.remove();
+
+                    const thumbUrl = URL.createObjectURL(blob);
+                    insertThumbToInput(thumbUrl);
+
+                } catch (err) {
+                    console.error('去背失敗:', err);
+                    fillBar.style.background = '#ff4444';
+                    pctText.textContent = '去背失敗，請重試';
+                    setTimeout(() => overlay.remove(), 2000);
+                }
+            } else {
+                // 保留原圖流程
+                const img = await createImageBitmap(file);
                 const tempCanvas = document.createElement('canvas');
                 tempCanvas.width = img.width;
                 tempCanvas.height = img.height;
@@ -694,38 +800,32 @@
                 };
 
                 currentText = file.name.replace(/\.[^.]+$/, '');
-                overlay.remove();
-
-                // 去背完成 → 將縮圖插入 contenteditable 游標位置
-                const thumbUrl = URL.createObjectURL(blob);
-                // 移除舊圖（如有）
-                textInput.querySelectorAll('img').forEach(img => img.remove());
-                const imgEl = document.createElement('img');
-                imgEl.src = thumbUrl;
-                imgEl.setAttribute('data-photo', '1');
-                // 插入到游標位置（或末尾）
-                const sel = window.getSelection();
-                if (sel.rangeCount && textInput.contains(sel.anchorNode)) {
-                    const range = sel.getRangeAt(0);
-                    range.insertNode(imgEl);
-                    range.setStartAfter(imgEl);
-                    range.collapse(true);
-                    sel.removeAllRanges();
-                    sel.addRange(range);
-                } else {
-                    textInput.appendChild(imgEl);
-                }
-                textInput.focus();
-
-            } catch (err) {
-                console.error('去背失敗:', err);
-                fillBar.style.background = '#ff4444';
-                pctText.textContent = '去背失敗，請重試';
-                setTimeout(() => overlay.remove(), 2000);
+                const thumbUrl = URL.createObjectURL(file);
+                insertThumbToInput(thumbUrl);
             }
 
             fileInput.value = '';
         });
+
+        // 將縮圖插入 contenteditable
+        function insertThumbToInput(thumbUrl) {
+            // 先移除舊圖
+            textInput.querySelectorAll('img').forEach(img => img.remove());
+            // 先聚焦，確保 selection 在 textInput 內
+            textInput.focus();
+            const imgEl = document.createElement('img');
+            imgEl.src = thumbUrl;
+            imgEl.setAttribute('data-photo', '1');
+            // 直接 appendChild 最穩定，避免 selection 狀態不一致
+            textInput.appendChild(imgEl);
+            // 把游標移到圖片後面
+            const range = document.createRange();
+            range.setStartAfter(imgEl);
+            range.collapse(true);
+            const sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(range);
+        }
 
         // === 從 contenteditable 解析圖文排列 ===
         function parseInputLayout() {
@@ -828,9 +928,9 @@
                 this.vx = -(Math.random() * 2.0 + 0.5);
                 this.vy = (Math.random() - 0.5) * 1.5;
                 
-                // 照片模式粒子加大，讓圖片更清晰
+                // 照片模式粒子用小而密的點，提升清晰度
                 this.size = uploadedImageData
-                    ? (Math.random() > 0.8 ? 4.0 : 3.0)
+                    ? 2.0
                     : (Math.random() > 0.8 ? 2.5 : 1.2);
                 // 【修改這裡】提高基礎透明度 (0.8~1.0)，讓 Emoji 或彩色像素更加飽和、清晰鮮豔
                 this.targetAlpha = Math.random() * 0.2 + 0.8;
@@ -896,8 +996,11 @@
                 const estimateTotal = () => {
                     let tw = allText ? octx.measureText(allText).width : 0;
                     if (uploadedImageData && layout.hasImg) {
-                        // 圖片等比放大到 fontSize*1.1 高度後的寬度
-                        tw += (uploadedImageData.width / uploadedImageData.height) * fontSize * 1.1;
+                        const hasText = (layout.textBefore + layout.textAfter).trim().length > 0;
+                        const imgH = hasText ? fontSize * 1.8 : h * 0.75;
+                        let imgW = (uploadedImageData.width / uploadedImageData.height) * imgH;
+                        if (imgW > w * 0.85) imgW = w * 0.85;
+                        tw += imgW;
                         tw += fontSize * 0.15; // gap
                     }
                     return tw;
@@ -916,12 +1019,18 @@
             let imgDrawW = 0, imgDrawH = 0;
             if (uploadedImageData && layout.hasImg) {
                 const src = uploadedImageData;
-                // 用 fontSize * 1.1 讓圖片跟大寫字母視覺等高
-                const targetH = fontSize * 1.1;
-                // 不再限制寬度比例，讓圖片等比放大到跟文字一樣高
+                const hasText = (layout.textBefore + layout.textAfter).trim().length > 0;
+                // 純圖片：佔畫面高度 75%；有文字：跟文字等高 * 1.8
+                const targetH = hasText ? fontSize * 1.8 : h * 0.75;
                 const imgScale = targetH / src.height;
                 imgDrawW = src.width * imgScale;
                 imgDrawH = targetH;
+                // 確保不超出畫面寬度
+                if (imgDrawW > w * 0.85) {
+                    const shrink = (w * 0.85) / imgDrawW;
+                    imgDrawW *= shrink;
+                    imgDrawH *= shrink;
+                }
             }
 
             // 排列：textBefore + [img] + textAfter，全部水平置中
@@ -981,10 +1090,10 @@
             targetCamera.fy = h / 2;
 
             const imgData = octx.getImageData(0, 0, w, h).data;
-            // 照片模式：用與粒子大小匹配的間距，確保無間隙、圖片清晰
-            const step = uploadedImageData ? 3 : (w > 800 ? 3 : 2);
+            // 照片模式：每 2px 取樣，粒子更密更清晰
+            const step = uploadedImageData ? 2 : (w > 800 ? 3 : 2);
             // 照片模式的 alpha 門檻較低以保留更多細節
-            const alphaThreshold = uploadedImageData ? 30 : 128;
+            const alphaThreshold = uploadedImageData ? 20 : 128;
             // 照片模式不跳過任何像素
             const skipRate = uploadedImageData ? 0 : 0.15;
 
